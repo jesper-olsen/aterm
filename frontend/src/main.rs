@@ -61,8 +61,6 @@ fn terminal_app() -> Html {
     let input = use_state(|| String::new());
     let cursor_visible = use_state(|| true);
 
-    //let input_ref = use_node_ref();
-
     // Handle user input
     let onkeydown = {
         let history = history.clone();
@@ -99,9 +97,7 @@ fn terminal_app() -> Html {
     }
 
     let cursor = if *cursor_visible { "|" } else { " " };
-
     let input_ref = use_node_ref();
-
     let ir = input_ref.clone();
     use_effect_with((), move |_| {
         gloo::timers::callback::Timeout::new(0, move || {
@@ -116,7 +112,6 @@ fn terminal_app() -> Html {
     html! {
         <div style="background: black; color: green; font-family: monospace; padding: 10px;">
             <div>
-               //{ for (*history).iter().map(|line| html! { <div>{ line }</div> }) }
                { for (*history).iter().map(|line| html! { <pre>{ line }</pre> }) }
             </div>
             <div>
@@ -127,7 +122,7 @@ fn terminal_app() -> Html {
                     placeholder=""
                     style="background: black; color: green; border: none; outline: none; font-family: monospace; width: 80%;"
                     value={(*input).clone()}
-                    onkeydown={onkeydown} // Correctly bind the Callback here
+                    onkeydown={onkeydown} // bind the callback
                     oninput={Callback::from(move |e: InputEvent| {
                         let value = e.target_unchecked_into::<web_sys::HtmlInputElement>().value();
                         input.set(value);
