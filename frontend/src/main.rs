@@ -109,6 +109,7 @@ fn terminal_app() -> Html {
         || () // Cleanup function
     });
 
+    let ch_width = input.len() as u32 + 1;
     html! {
         <div style="background: black; color: green; font-family: monospace; padding: 10px;">
             <div>
@@ -117,12 +118,14 @@ fn terminal_app() -> Html {
             <div>
                 <span>{ "> " }</span>
                 <input
-                    ref={input_ref} // Attach the NodeRef
+                    ref={input_ref}
                     type="text"
-                    placeholder=""
-                    style="background: black; color: green; border: none; outline: none; font-family: monospace; width: 80%;"
+                    style={format!(
+                        "background: black; color: green; border: none; outline: none; \
+                         font-family: monospace; caret-color: transparent; width: {ch_width}ch;"
+                    )}
                     value={(*input).clone()}
-                    onkeydown={onkeydown} // bind the callback
+                    onkeydown={onkeydown}
                     oninput={Callback::from(move |e: InputEvent| {
                         let value = e.target_unchecked_into::<web_sys::HtmlInputElement>().value();
                         input.set(value);
