@@ -1,5 +1,4 @@
 use chrono::Local;
-use gloo::timers::callback::Interval;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
@@ -56,47 +55,105 @@ fn process(command: &str) -> String {
 fn terminal_app() -> Html {
     let new_mail = use_state(|| true);
     let history = use_state(|| {
-        vec!["Welcome to the terminal\nHostname: ygdrasil.jesperolsen.com".to_string()]
-    });
-    let input = use_state(|| String::new());
-    let cursor_visible = use_state(|| true);
+        let now = Local::now().format("%a %b %d %H:%M:%S").to_string();
+        let storage = web_sys::window().and_then(|w| w.local_storage().ok().flatten());
+        let last_login = storage
+            .as_ref()
+            .and_then(|s| s.get_item("last_login").ok().flatten());
+        if let Some(s) = &storage {
+            let _ = s.set_item("last_login", &now);
+        }
 
-    // Handle user input
+        let mut lines = vec!["Unix Version 7\nHostname: ygdrasil.jesperolsen.com".to_string()];
+        if let Some(prev) = last_login {
+            lines.push(format!("Last login: {}", prev));
+        }
+        lines
+    });
+    let input = use_state(String::new);
+
+    // Command history for up/down arrow navigation.
+    let cmd_history = use_state(Vec::<String>::new);
+    // None = not currently navigating; Some(i) = showing the i-th most recent
+    // command, where 0 is the most recent.
+    let history_pos = use_state(|| None::<usize>);
+    // Whatever was typed before the user started navigating history, restored
+    // when they arrow back down past the most recent command.
+    let draft = use_state(String::new);
+
     let onkeydown = {
         let history = history.clone();
         let input = input.clone();
-        Callback::from(move |event: KeyboardEvent| {
-            if event.key() == "Enter" {
+        let new_mail = new_mail.clone();
+        let cmd_history = cmd_history.clone();
+        let history_pos = history_pos.clone();
+        let draft = draft.clone();
+        Callback::from(move |event: KeyboardEvent| match event.key().as_str() {
+            "Enter" => {
                 event.prevent_default();
                 let command = (*input).clone();
-                input.set("".to_string());
+                input.set(String::new());
+                history_pos.set(None);
+                draft.set(String::new());
 
-                // Process the command and update history
+                if !command.trim().is_empty() {
+                    let mut ch = (*cmd_history).clone();
+                    ch.push(command.clone());
+                    cmd_history.set(ch);
+                }
+
+                if command.trim() == "clear" {
+                    history.set(vec![]);
+                    return;
+                }
+
                 let mut new_history = (*history).clone();
                 new_history.push(format!("> {}", command));
                 let output = process(&command);
-                new_history.push(output); //format!("Response to '{}'", command));
+                new_history.push(output);
                 if *new_mail {
                     new_history.push(String::from("You have new mail\n"));
                     new_mail.set(false);
                 }
                 history.set(new_history);
             }
+            "ArrowUp" => {
+                event.prevent_default();
+                let len = cmd_history.len();
+                if len == 0 {
+                    return;
+                }
+                let next_pos = match *history_pos {
+                    None => {
+                        draft.set((*input).clone());
+                        0
+                    }
+                    Some(p) if p + 1 < len => p + 1,
+                    Some(p) => p,
+                };
+                input.set(cmd_history[len - 1 - next_pos].clone());
+                history_pos.set(Some(next_pos));
+            }
+            "ArrowDown" => {
+                event.prevent_default();
+                match *history_pos {
+                    None => {}
+                    Some(0) => {
+                        input.set((*draft).clone());
+                        history_pos.set(None);
+                    }
+                    Some(p) => {
+                        let next_pos = p - 1;
+                        let len = cmd_history.len();
+                        input.set(cmd_history[len - 1 - next_pos].clone());
+                        history_pos.set(Some(next_pos));
+                    }
+                }
+            }
+            _ => {}
         })
     };
 
-    // Cursor blinking
-    {
-        let cursor_visible = cursor_visible.clone();
-        use_effect_with((), move |_| {
-            let interval = Interval::new(500, move || {
-                cursor_visible.set(!*cursor_visible);
-            });
-            move || drop(interval)
-        });
-    }
-
-    let cursor = if *cursor_visible { "|" } else { " " };
     let input_ref = use_node_ref();
     let ir = input_ref.clone();
     use_effect_with((), move |_| {
@@ -109,7 +166,6 @@ fn terminal_app() -> Html {
         || () // Cleanup function
     });
 
-    let ch_width = input.len() as u32 + 1;
     html! {
         <div style="background: black; color: green; font-family: monospace; padding: 10px;">
             <div>
@@ -118,20 +174,17 @@ fn terminal_app() -> Html {
             <div>
                 <span>{ "> " }</span>
                 <input
-                    ref={input_ref}
+                    ref={input_ref} // Attach the NodeRef
                     type="text"
-                    style={format!(
-                        "background: black; color: green; border: none; outline: none; \
-                         font-family: monospace; caret-color: transparent; width: {ch_width}ch;"
-                    )}
+                    placeholder=""
+                    style="background: black; color: green; border: none; outline: none; font-family: monospace; width: 80%;"
                     value={(*input).clone()}
-                    onkeydown={onkeydown}
+                    onkeydown={onkeydown} // bind the callback
                     oninput={Callback::from(move |e: InputEvent| {
                         let value = e.target_unchecked_into::<web_sys::HtmlInputElement>().value();
                         input.set(value);
                     })}
                 />
-                <span>{ cursor }</span>
             </div>
         </div>
     }
