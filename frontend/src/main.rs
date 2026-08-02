@@ -1,53 +1,17 @@
+mod commands;
+
 use chrono::Local;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-static PWD: &str = "/home/jesper";
-static LS: &str = "haiku.txt";
-static LL: &str = "-rw-rw-r--  1 root  staff  71 Nov 29  1996 haiku.txt";
-
-static HAIKU: &str = "An old silent pond\n\n\
-                      A frog jumps into the pond\n\n\
-                      Splash! Silence again.";
-
-static FINGER: &str =
-    "Login            Name             TTY      Idle  Login  Time   Office  Phone\n\
-                       jesper           Jesper Olsen    *console    6d  Nov 21 08:23";
-
-static MAIL: &str = "\"/var/mail/user\": 1 message \n\
-      N 1 jesper.olsen@gmail.com     Wed Nov 27  12/480  Subject: Hello \n\
-      \n\
-      Greetings valued netizen - not much to see here at the moment. \n\
-      \n\
-      -Jesper\n\
-      https://github.com/jesper-olsen";
-
 fn process(command: &str) -> String {
-    let now = Local::now();
-    // Format it to "Thu Nov 23 10:21"
-    let date = now.format("%a %b %d %H:%M").to_string();
-
     let words: Vec<String> = command.split_whitespace().map(String::from).collect();
     if words.is_empty() {
         return String::new();
     }
-    match words[0].as_str() {
-        "ll" => String::from(LL),
-        "ls" if words.len() > 1 && words[1] == "-l" => String::from(LL),
-        "ls" | "dir" => String::from(LS),
-        "pwd" => String::from(PWD),
-        "date" => date,
-        "mail" => format!("{}", MAIL),
-        "finger" => format!("{}", FINGER),
-        "more" | "cat" if words.len() > 1 => {
-            if words[1] == "haiku.txt" {
-                format!("{}", HAIKU)
-            } else {
-                format!("{}: No such file or directory", words[1])
-            }
-        }
-
-        _ => format!("-bash: {command}: command not found"),
+    match commands::run(&words[0], &words[1..]) {
+        Some(output) => output,
+        None => format!("-bash: {command}: command not found"),
     }
 }
 

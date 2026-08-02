@@ -8,3 +8,4 @@ chrono = "0.4.45"
 gloo = "0.12.0"
 web-sys = "0.3.103"
 yew = { version = "0.23.0", features = ["csr"] }
+shunting_yard = { git = "https://github.com/jesper-olsen/shunting_yard" }
