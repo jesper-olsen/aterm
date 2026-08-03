@@ -15,13 +15,16 @@ static BIN_LL: &str = "-rwxr-xr-x  1 root  staff  137312 Nov 29  1996 calc\n\
 static HAIKU: &str = "An old silent pond\n\n\
                       A frog jumps into the pond\n\n\
                       Splash! Silence again.";
-static FINGER: &str =
-    "Login            Name             TTY      Idle  Login  Time   Office  Phone\n\
+static FINGER: &str = "Login            Name             TTY      Idle  Login  Time   Office  Phone\n\
                        jesper           Jesper Olsen    *console    6d  Nov 21 08:23";
 static MAIL: &str = "\"/var/mail/user\": 1 message \n\
       N 1 jesper.olsen@gmail.com     Wed Nov 27  12/480  Subject: Hello \n\
       \n\
       Greetings valued netizen - not much to see here at the moment. \n\
+      \n\
+      There are a few programs in the bin/ directory you can try. The 'calc' program is a calculator based on \n\
+      Edsger Dijkstra's Shunting-Yard algorithm. You can find the source code in my github - type 'github' \n\
+      to go there. \n\
       \n\
       -Jesper\n\
       https://github.com/jesper-olsen";
@@ -39,6 +42,13 @@ fn ls_listing(target: Option<&str>, long: bool) -> String {
 pub fn run(cmd: &str, args: &[String]) -> Option<String> {
     let target = || args.iter().find(|a| a.as_str() != "-l").map(String::as_str);
     match cmd {
+        "github" => {
+            if let Some(window) = web_sys::window() {
+                // Opens the URL in a new tab ("_blank")
+                let _ = window.open_with_url_and_target("https://github.com/jesper-olsen", "_blank");
+            }
+            Some(String::from("Opening GitHub profile..."))
+        }
         "ll" => Some(ls_listing(target(), true)),
         "ls" => Some(ls_listing(target(), args.iter().any(|a| a == "-l"))),
         "dir" => Some(ls_listing(target(), false)),
